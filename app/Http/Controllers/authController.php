@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Exception;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
-
+use Illuminate\Support\Str;
 class authController extends Controller
 {
     //
@@ -23,22 +25,27 @@ class authController extends Controller
             $user = User::where("username",'=',$request->username)->first();
             if(!$user){
                 return response()->json([
-                    "status" => false,
+                    "success" => false,
                     'message' => "username tidak tersedia"
                 ]);
             }
 
             if(! Hash::check($request->password, $user->password)){
                 return response()->json([
-                    "status" => false,
+                    "success" => false,
                     'message' => "password salah !"
                 ]);
             }
+            $user->tokens()->delete();
+
+            
+            $token = $user->createToken('auth_token')->plainTextToken;
             
             return response()->json([
-                "status" => true,
-                'message' => "Login Berhasil",
-                'data' => $user
+                "success" => true,
+                "message" => "Login Berhasil",
+                "user" => $user,
+                "token" => $token,
             ]);
         } catch (\Exception $e) {
             //throw $th;
@@ -56,6 +63,7 @@ class authController extends Controller
                 'phone' => "required|max:13",
                 'email' => "required|email",
                 'password'=> "required",
+                'password_confirmation'=> "required",
             ]);
 
             $user = User::where('email','=',$request->email)->first();
@@ -63,13 +71,13 @@ class authController extends Controller
             
             if($user){
                 return response()->json([
-                    "status" => false,
+                    "success" => false,
                     'message' => "email tersedia"
                 ]);
             }
             if($username){
                 return response()->json([
-                    "status" => false,
+                    "success" => false,
                     'message' => "username tersedia"
                 ]);
             }
@@ -87,7 +95,7 @@ class authController extends Controller
                 if($insert){
                     $token = $insert->createToken('auth_token')->plainTextToken;
                     return response()->json([
-                        "status" => true,
+                        "success" => true,
                         'message' => "berhasil mendaftar akun",
                         "data" => [
                             "name" => $request->name,
@@ -102,7 +110,7 @@ class authController extends Controller
                 }
             }else{
                 return response()->json([
-                    "status" => false,
+                    "success" => false,
                     'message' => "password tidak sesuai"
                 ]);
             }
@@ -113,5 +121,68 @@ class authController extends Controller
                 "message" => $th
             ]);
         }
+    }
+
+    public function logout(Request $request){
+        $request->user()->currentAccessToken()->delete();
+    }
+
+    public function sendResetLink(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+        ]);
+
+        $status = Password::sendResetLink($request->only('email'));
+        $token = DB::table('password_reset_tokens')
+        ->where('email', $request->email)
+        ->orderBy('created_at', 'desc') // Ambil token terbaru
+        ->value('token');
+        
+        if ($status === Password::RESET_LINK_SENT) {
+            return response()->json([
+                'success' => true,
+                'message' => __($status),
+                'token' => $token
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => __($status)
+        ], 400);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'token' => 'required',
+            'email' => 'required|email|exists:users,email',
+            'password' => 'required|min:8|confirmed',
+        ]);
+
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password) {
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                    'remember_token' => Str::random(60),
+                ])->save();
+
+                event(new PasswordReset($user));
+            }
+        );
+
+        if ($status === Password::PASSWORD_RESET) {
+            return response()->json([
+                'success' => true,
+                'message' => __($status)
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => __($status)
+        ], 400);
     }
 }
