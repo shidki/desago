@@ -7,6 +7,8 @@ use App\Models\User;
 use App\Notifications\ResetPasswordNotification;
 use Carbon\Carbon;
 use Exception;
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\RequestException;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,7 +20,7 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
-use Twilio\Rest\Client;
+use Laravel\Socialite\Facades\Socialite;
 
 class authController extends Controller
 {
@@ -75,12 +77,19 @@ class authController extends Controller
             ]);
 
             $user = User::where('email','=',$request->email)->first();
+            $phone = User::where('phone','=',$request->phone)->first();
             $username = User::where('username','=',$request->username)->first();
             
             if($user){
                 return response()->json([
                     "success" => false,
                     'message' => "email tersedia"
+                ]);
+            }
+            if($phone){
+                return response()->json([
+                    "success" => false,
+                    'message' => "No hp tersedia"
                 ]);
             }
             if($username){
@@ -136,34 +145,6 @@ class authController extends Controller
     }
 
 
-
-
-    //public function sendResetLink(Request $request)
-    //{
-    //    $request->validate([
-    //        'email' => 'required|email|exists:users,email',
-    //    ]);
-
-    //    $status = Password::sendResetLink($request->only('email'));
-    //    $token = DB::table('password_reset_tokens')
-    //    ->where('email', $request->email)
-    //    ->orderBy('created_at', 'desc') // Ambil token terbaru
-    //    ->value('token');
-    //    $resetUrl = url('/reset-password/' . $token);
-    //    if ($status === Password::RESET_LINK_SENT) {
-    //        return response()->json([
-    //            'success' => true,
-    //            'message' => __($status),
-    //            'reset_url' => $resetUrl // Kirim URL reset password yang benar
-    //        ]);
-    //    }
-
-    //    return response()->json([
-    //        'success' => false,
-    //        'message' => __($status)
-    //    ], 400);
-    //}
-
     public function sendResetLink(Request $request)
     {
         $request->validate([
@@ -191,7 +172,8 @@ class authController extends Controller
             //dd($request->all());
             $request->validate([
                 '_token' => 'required',
-                'email' => 'required|email|exists:users,email',
+                'email' => 'nullable|email|exists:users,email',
+                'phone' => 'nullable|exists:users,phone|numeric',
                 'password' => 'required',
                 'password_confirmation' => 'required',
             ]);
@@ -201,7 +183,7 @@ class authController extends Controller
                 return redirect()->back()->with('error', 'Password tidak sesuai');
             }
             $status = Password::reset(
-                $request->only('email', 'password', 'password_confirmation', 'token'),
+                $request->only('email','phone', 'password', 'password_confirmation', 'token'),
                 function (User $user, string $password) {
                     $user->forceFill([
                         'password' => Hash::make($password),
@@ -216,16 +198,8 @@ class authController extends Controller
     
             if ($status === Password::PASSWORD_RESET) {
                 return redirect()->back()->with('success', 'Password berhasil direset.');
-                //return response()->json([
-                //    'success' => true,
-                //    'message' => __($status)
-                //]);
             }
             return redirect()->back()->with('error', 'Gagal mereset password. Silakan coba lagi.');
-            //return response()->json([
-            //    'success' => false,
-            //    'message' => __($status)
-            //], 400);
         } catch (\Throwable $th) {
             return response()->json([
                 "message" => $th->getMessage()
@@ -269,6 +243,7 @@ class authController extends Controller
                         $user = User::create([
                             'name' => $request->name,
                             'username' => $request->name,
+                            'phone' => $request->phone,
                             'email' => $request->email,
                             'password' => bcrypt(Str::random(16))
                         ]);
@@ -307,5 +282,88 @@ class authController extends Controller
                     'error' => $e->getMessage()
                 ], 500);
             }
+    }
+
+
+
+    public function sendMessage(Request $request)
+    {
+        try {
+            // Validasi input
+            $validator = Validator::make($request->all(), [
+                'phone' => 'required|numeric',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $validator->errors()->first(),
+                ], 422);
+            }
+            
+
+            // Ambil user berdasarkan nomor telepon
+            $user = User::where('phone', $request->phone)->first();
+
+            if(!$user){
+                return response()->json([
+                    'success' => false,
+                    'message' => "Nomor telepon tidak terdaftar"
+                ], 422);
+            }
+            // Buat token reset password
+            $token = Password::createToken($user);
+
+            $resetUrl = url('/reset-password/' . $token . '?phone=' . $user->phone . '&email=' . $user->email);
+
+
+            // Konfigurasi UltraMsg
+            $instance_id = "instance106886"; // Ganti dengan Instance ID dari UltraMsg
+            $api_token = "ozdwzvsr9k7urh4u"; // Ganti dengan Token API dari UltraMsg
+            $phone = $request->phone; // Nomor tujuan dari request
+            $message = "Halo, ini pesan dari Laravel menggunakan UltraMsg!\nGunakan link berikut untuk reset password: \n$resetUrl";
+
+            // Kirim pesan dengan UltraMsg
+            $client = new Client();
+            $response = $client->post("https://api.ultramsg.com/$instance_id/messages/chat", [
+                'form_params' => [
+                    'token' => $api_token,
+                    'to' => $phone,
+                    'body' => $message,
+                ],
+            ]);
+
+            $body = json_decode($response->getBody()->getContents(), true);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pesan berhasil dikirim',
+                'response' => $body
+            ]);
+
+        } catch (RequestException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengirim pesan',
+                'error' => $e->getMessage()
+            ], 500);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan',
+                'error' => $e->getMessage()
+            ], 500);
         }
+    }
+
+
+    //public function edit_profile(Request $request){
+    //    try {
+    //        $request->validate([
+
+    //        ])
+    //    } catch (\Throwable $th) {
+    //        //throw $th;
+    //    }
+    //}
 }

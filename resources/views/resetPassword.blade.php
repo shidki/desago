@@ -13,15 +13,15 @@
                     <form action="{{ route('password.update') }}" method="POST" class="flex flex-col w-full h-full pb-6 text-center bg-white rounded-3xl">
 						@csrf
                         <h3 class="mb-3 text-4xl font-extrabold text-dark-grey-900">Reset Password</h3>
-                        <p class="mb-4 text-grey-700">Masukkan email dan password</p>
+                        <p class="mb-4 text-grey-700">Masukkan Password Baru</p>
                         <div class="flex items-center mb-3">
                             <hr class="h-0 border-b border-solid border-grey-500 grow">
                             <p class="mx-4 text-grey-600">Reset</p>
                             <hr class="h-0 border-b border-solid border-grey-500 grow">
                         </div>
                         <input type="hidden" value="{{$token}}" name="token" id="">
-                        <label for="email" class="mb-2 text-sm text-start text-grey-900">Email*</label>
-                        <input id="email" name="email" type="email" placeholder="Masukkan Email" class="flex items-center w-full px-5 py-4 mr-2 text-sm font-medium outline-none focus:bg-grey-400 mb-7 placeholder:text-grey-700 bg-grey-200 text-dark-grey-900 rounded-2xl" />
+                        {{--<label for="email" class="mb-2 text-sm text-start text-grey-900">Email*</label>--}}
+                        <input id="email" name="email" value="{{ request('email') }}" type="hidden" placeholder="Masukkan Email" class="flex items-center w-full px-5 py-4 mr-2 text-sm font-medium outline-none focus:bg-grey-400 mb-7 placeholder:text-grey-700 bg-grey-200 text-dark-grey-900 rounded-2xl" />
                         <label for="password" class="mb-2 text-sm text-start text-grey-900">Password*</label>
                         <input id="password" name="password" type="password" placeholder="Masukkan Password" class="flex items-center w-full px-5 py-4 mb-5 mr-2 text-sm font-medium outline-none focus:bg-grey-400 placeholder:text-grey-700 bg-grey-200 text-dark-grey-900 rounded-2xl"
                         />
@@ -29,7 +29,7 @@
                         <input id="password_confirmation" name="password_confirmation" type="password" placeholder="Masukkan Password" class="flex items-center w-full px-5 py-4 mb-5 mr-2 text-sm font-medium outline-none focus:bg-grey-400 placeholder:text-grey-700 bg-grey-200 text-dark-grey-900 rounded-2xl"
                         />
 						@if(session('success'))
-							<div class="p-4 mb-4 text-sm text-green-800 bg-green-100 rounded-lg" role="alert" style="color: white;font-weight:bold;">
+							<div class="p-4 mb-4 text-sm text-green-800 bg-green-100 rounded-lg" role="alert" style="color: rgb(0, 0, 0);font-weight:bold;">
 								{{ session('success') }}
 							</div>
 							{{ session()->forget('success') }}

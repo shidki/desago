@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 class socialMedia extends Model
 {
     //
+
+    protected $table = "socialMedias";
     protected $fillable = [
         'user_id',
         'provider',
