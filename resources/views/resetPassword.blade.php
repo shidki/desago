@@ -119,56 +119,11 @@
     </style>
 </head>
 
-<<<<<<< HEAD
-<body class="bg-white rounded-lg py-5">
-    <div class="container flex flex-col mx-auto bg-white rounded-lg pt-12 my-5">
-        <div class="flex justify-center w-full h-full my-auto xl:gap-14 lg:justify-normal md:gap-5 draggable">
-            <div class="flex items-center justify-center w-full lg:p-12">
-                <div class="flex items-center xl:p-10">
-                    <form action="{{ route('password.update') }}" method="POST" class="flex flex-col w-full h-full pb-6 text-center bg-white rounded-3xl">
-						@csrf
-                        <h3 class="mb-3 text-4xl font-extrabold text-dark-grey-900">Reset Password</h3>
-                        <p class="mb-4 text-grey-700">Masukkan Password Baru</p>
-                        <div class="flex items-center mb-3">
-                            <hr class="h-0 border-b border-solid border-grey-500 grow">
-                            <p class="mx-4 text-grey-600">Reset</p>
-                            <hr class="h-0 border-b border-solid border-grey-500 grow">
-                        </div>
-                        <input type="hidden" value="{{$token}}" name="token" id="">
-                        {{--<label for="email" class="mb-2 text-sm text-start text-grey-900">Email*</label>--}}
-                        <input id="email" name="email" value="{{ request('email') }}" type="hidden" placeholder="Masukkan Email" class="flex items-center w-full px-5 py-4 mr-2 text-sm font-medium outline-none focus:bg-grey-400 mb-7 placeholder:text-grey-700 bg-grey-200 text-dark-grey-900 rounded-2xl" />
-                        <label for="password" class="mb-2 text-sm text-start text-grey-900">Password*</label>
-                        <input id="password" name="password" type="password" placeholder="Masukkan Password" class="flex items-center w-full px-5 py-4 mb-5 mr-2 text-sm font-medium outline-none focus:bg-grey-400 placeholder:text-grey-700 bg-grey-200 text-dark-grey-900 rounded-2xl"
-                        />
-                        <label for="password_confirmation" class="mb-2 text-sm text-start text-grey-900">Konfirmasi Password*</label>
-                        <input id="password_confirmation" name="password_confirmation" type="password" placeholder="Masukkan Password" class="flex items-center w-full px-5 py-4 mb-5 mr-2 text-sm font-medium outline-none focus:bg-grey-400 placeholder:text-grey-700 bg-grey-200 text-dark-grey-900 rounded-2xl"
-                        />
-						@if(session('success'))
-							<div class="p-4 mb-4 text-sm text-green-800 bg-green-100 rounded-lg" role="alert" style="color: rgb(0, 0, 0);font-weight:bold;">
-								{{ session('success') }}
-							</div>
-							{{ session()->forget('success') }}
-						@endif
-
-						@if(session('error'))
-							<div class="p-4 mb-4 text-sm text-red-800 bg-red-100 rounded-lg" role="alert" style="background-color: red;color: white;font-weight:bold;">
-								{{ session('error') }}
-							</div>
-							{{ session()->forget('error') }}
-						@endif
-
-                        <button type="submit" class="w-full px-6 py-5 mb-5 text-sm font-bold leading-none text-white transition duration-300 md:w-96 rounded-2xl hover:bg-purple-blue-600 focus:ring-4 focus:ring-purple-blue-100 bg-purple-blue-500">Submit</button>
-
-                    </form>
-                </div>
-            </div>
-=======
 <body>
     <div class="wrapper">
         <div class="logo">
             <img src="data:image/png;base64,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"
                 alt="User Icon">
->>>>>>> 2e32018 (notifReset,verif email,new middleware)
         </div>
         <div class="text-center mt-4 name" style="margin-top: 20px;margin-bottom: 20px;">
             Reset Password - DESAGO
