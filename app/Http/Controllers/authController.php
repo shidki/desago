@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\VerifyEmail;
 use App\Models\socialMedia;
 use App\Models\User;
 use App\Notifications\ResetPasswordNotification;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -37,14 +39,20 @@ class authController extends Controller
                 return response()->json([
                     "success" => false,
                     'message' => "username tidak tersedia"
-                ]);
+                ],422);
+            }
+            if($user->email_verified_at == null){
+                return response()->json([
+                    "success" => false,
+                    'message' => "Email belum terverifikasi"
+                ],422);
             }
 
             if(! Hash::check($request->password, $user->password)){
                 return response()->json([
                     "success" => false,
                     'message' => "password salah !"
-                ]);
+                ],422);
             }
             $user->tokens()->delete();
 
@@ -56,12 +64,12 @@ class authController extends Controller
                 "message" => "Login Berhasil",
                 "user" => $user,
                 "token" => $token,
-            ]);
+            ],200);
         } catch (\Exception $e) {
             //throw $th;
             return response()->json([
                 "message" => $e->getMessage()
-            ]);
+            ],422);
         }
     }
 
@@ -84,7 +92,13 @@ class authController extends Controller
                 return response()->json([
                     "success" => false,
                     'message' => "email tersedia"
-                ]);
+                ],422);
+            }
+            if($phone){
+                return response()->json([
+                    "success" => false,
+                    'message' => "No hp tersedia"
+                ],422);
             }
             if($phone){
                 return response()->json([
@@ -96,47 +110,77 @@ class authController extends Controller
                 return response()->json([
                     "success" => false,
                     'message' => "username tersedia"
-                ]);
+                ],422);
             }
 
             if($request->password_confirmation == $request->password){
 
-                
-                $insert = User::create([
+                // ngirim link email
+                // Buat token verifikasi
+                $verificationToken = Str::random(60);
+
+                // Simpan token verifikasi di session sementara
+                Cache::put('register_' . $verificationToken, [
                     'name' => $request->name,
                     'username' => $request->username,
                     'email' => $request->email,
                     'phone' => $request->phone,
                     'password' => Hash::make($request->password),
-                ]);
-                if($insert){
-                    $token = $insert->createToken('auth_token')->plainTextToken;
-                    return response()->json([
-                        "success" => true,
-                        'message' => "berhasil mendaftar akun",
-                        "data" => [
-                            "name" => $request->name,
-                            "username" => $request->username,
-                            "phone" => $request->phone,
-                            "email" => $request->email,
-                            "password" => $request->password,
-                            "password_confirmation" => $request->password_confirmation,
-                            'token' => $token
-                        ]
-                    ],201);
-                }
+                ], now()->addMinutes(15));
+
+                // Buat URL verifikasi
+                $verificationUrl = route('insertRegister', ['token' => $verificationToken]);
+
+                // Kirim email verifikasi
+                Mail::to($request->email)->send(new VerifyEmail($verificationUrl));
+
+                return response()->json([
+                    "success" => true,
+                    'message' => "Silakan cek email untuk verifikasi",
+                    'data' => [
+                        'user' => $request->all(),
+                        'token' => $verificationToken
+                    ]
+                ],200);
             }else{
                 return response()->json([
                     "success" => false,
                     'message' => "password tidak sesuai"
-                ]);
+                ],422);
             }
 
         } catch (\Throwable $th) {
             //throw $th;
             return response()->json([
-                "message" => $th
+                "message" => $th->getMessage()
+            ],422);
+        }
+    }
+
+    public function insertRegister(Request $request){
+        try {
+            $token = $request->token;
+            $registerData = Cache::get('register_' . $token);
+            //dd($registerData);
+            $insert = User::create([
+                'name' => $registerData['name'],
+                'username' => $registerData['username'],
+                'email' => $registerData['email'],
+                'phone' => $registerData['phone'],
+                'password' => $registerData['password'],
+                'email_verified_at' => Carbon::now(),
             ]);
+            if($insert){
+                Cache::forget('register_' . $token);
+                $token = $insert->createToken('auth_token')->plainTextToken;
+                return view('notifEmail')->with(['success' => true]);
+            }
+            return view('notifEmail')->with(['success' => false]);
+
+        } catch (\Throwable $th) {
+            return view('notifEmail')->with([               
+            "success" => false,
+            'message' => $th->getMessage()]);
         }
     }
 
@@ -163,7 +207,7 @@ class authController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Email reset password telah dikirim.',
-        ]);
+        ],200);
     }
 
     public function resetPassword(Request $request)
@@ -189,8 +233,6 @@ class authController extends Controller
                         'password' => Hash::make($password),
                         'remember_token' => Str::random(60),
                     ])->save();
-                    
-                    
                     event(new PasswordReset($user));
                 }
             );
@@ -201,9 +243,10 @@ class authController extends Controller
             }
             return redirect()->back()->with('error', 'Gagal mereset password. Silakan coba lagi.');
         } catch (\Throwable $th) {
-            return response()->json([
-                "message" => $th->getMessage()
-            ]);
+            //return response()->json([
+            //    "message" => $th->getMessage()
+            //]);
+            return redirect()->back()->with('error', $th->getMessage());
         }
     }
 
@@ -245,7 +288,8 @@ class authController extends Controller
                             'username' => $request->name,
                             'phone' => $request->phone,
                             'email' => $request->email,
-                            'password' => bcrypt(Str::random(16))
+                            'password' => bcrypt(Str::random(16)),
+                            'email_verified_at' => Carbon::now(),
                         ]);
                     }
 
@@ -280,7 +324,7 @@ class authController extends Controller
                 return response()->json([
                     'message' => 'Error during login',
                     'error' => $e->getMessage()
-                ], 500);
+                ], 422);
             }
     }
 
@@ -321,7 +365,7 @@ class authController extends Controller
             $instance_id = "instance106886"; // Ganti dengan Instance ID dari UltraMsg
             $api_token = "ozdwzvsr9k7urh4u"; // Ganti dengan Token API dari UltraMsg
             $phone = $request->phone; // Nomor tujuan dari request
-            $message = "Halo, ini pesan dari Laravel menggunakan UltraMsg!\nGunakan link berikut untuk reset password: \n$resetUrl";
+            $message = "$resetUrl \n\nGunakan link diatas untuk reset password \nLink akan kadaluarsa selama 60 menit.";
 
             // Kirim pesan dengan UltraMsg
             $client = new Client();
@@ -339,31 +383,20 @@ class authController extends Controller
                 'success' => true,
                 'message' => 'Pesan berhasil dikirim',
                 'response' => $body
-            ]);
+            ],200);
 
         } catch (RequestException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal mengirim pesan',
                 'error' => $e->getMessage()
-            ], 500);
+            ], 422);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan',
                 'error' => $e->getMessage()
-            ], 500);
+            ], 422);
         }
     }
-
-
-    //public function edit_profile(Request $request){
-    //    try {
-    //        $request->validate([
-
-    //        ])
-    //    } catch (\Throwable $th) {
-    //        //throw $th;
-    //    }
-    //}
 }

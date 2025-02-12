@@ -12,4 +12,4 @@ Route::get('/reset-password/{token}', function (string $token) {
 })->middleware('guest')->name('password.reset');
 
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
-
+Route::get('/register2',[authController::class,'insertRegister'])->name('insertRegister');
