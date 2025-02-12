@@ -11,9 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('socialMedias', function (Blueprint $table) {
+        Schema::create('app_socialMedias', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('app_user_id')->constrained()->onDelete('cascade');
             $table->string('provider');
             $table->string('provider_id');
             $table->string('provider_token')->nullable();
@@ -27,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('socialMedias');
+        Schema::dropIfExists('app_socialMedias');
     }
 };

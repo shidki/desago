@@ -184,6 +184,8 @@ class authController extends Controller
         }
     }
 
+    
+
     public function logout(Request $request){
         $request->user()->currentAccessToken()->delete();
     }
@@ -192,7 +194,7 @@ class authController extends Controller
     public function sendResetLink(Request $request)
     {
         $request->validate([
-            'email' => 'required|email|exists:users,email',
+            'email' => 'required|email|exists:app_users,email',
         ]);
     
         // Ambil user berdasarkan email
@@ -216,8 +218,8 @@ class authController extends Controller
             //dd($request->all());
             $request->validate([
                 '_token' => 'required',
-                'email' => 'nullable|email|exists:users,email',
-                'phone' => 'nullable|exists:users,phone|numeric',
+                'email' => 'nullable|email|exists:app_users,email',
+                'phone' => 'nullable|exists:app_users,phone|numeric',
                 'password' => 'required',
                 'password_confirmation' => 'required',
             ]);

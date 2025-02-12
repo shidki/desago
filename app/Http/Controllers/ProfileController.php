@@ -41,7 +41,7 @@ class ProfileController extends Controller
             }
             
             // email tidak diupdate karna email udah pasti sama ( di front end di disable edit email )
-            $updateUser = DB::table('users')->where("id",'=',$user->id)->update([
+            $updateUser = DB::table('app_users')->where("id",'=',$user->id)->update([
                 "name" => $request->name,
                 "phone" => $request->phone,
                 "username" => $request->username,

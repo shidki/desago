@@ -8,7 +8,7 @@ class socialMedia extends Model
 {
     //
 
-    protected $table = "socialMedias";
+    protected $table = "app_socialMedias";
     protected $fillable = [
         'user_id',
         'provider',
