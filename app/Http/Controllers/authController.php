@@ -184,13 +184,9 @@ class authController extends Controller
         }
     }
 
-    
-
     public function logout(Request $request){
         $request->user()->currentAccessToken()->delete();
     }
-
-
     public function sendResetLink(Request $request)
     {
         $request->validate([
@@ -364,9 +360,9 @@ class authController extends Controller
 
 
             // Konfigurasi UltraMsg
-            $instance_id = "instance106886"; // Ganti dengan Instance ID dari UltraMsg
-            $api_token = "ozdwzvsr9k7urh4u"; // Ganti dengan Token API dari UltraMsg
-            $phone = $request->phone; // Nomor tujuan dari request
+            $instance_id = "instance106886";
+            $api_token = "ozdwzvsr9k7urh4u";
+            $phone = $request->phone;
             $message = "$resetUrl \n\nGunakan link diatas untuk reset password \nLink akan kadaluarsa selama 60 menit.";
 
             // Kirim pesan dengan UltraMsg
